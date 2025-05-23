@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>混凝土配合比计算</title>
+    <style>
+        /* 保持原有样式不变 */
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: inline-block;
+            width: 150px;
+            margin-right: 10px;
+        }
+
+        input, select {
+            padding: 5px;
+            width: 200px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9f7ef;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>混凝土配合比计算</h2>
+        
+        <div class="input-group">
+            <label>混凝土强度等级：</label>
+            <select id="strengthGrade">
+                <option value="C20">C20</option>
+                <option value="C30">C30</option>
+                <option value="C40">C40</option>
+                <option value="C50">C50</option>
+                <option value="C60">C60</option>
+                <option value="C70">C70</option>
+                <option value="C80">C80</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>坍落度 (mm)：</label>
+            <input type="number" id="slump" value="120" min="50" max="260">
+        </div>
+
+        <div class="input-group">
+            <label>水泥类型：</label>
+            <select id="cementType">
+                <option value="32.5">32.5级</option>
+                <option value="42.5" selected>42.5级</option>
+                <option value="52.5">52.5级</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label>砂率 (%)：</label>
+            <input type="number" id="sandRatio" value="35" min="20" max="50" step="1">
+        </div>
+
+        <!-- 新增输入项 -->
+        <div class="input-group">
+            <label>粉煤灰替代率 (%)：</label>
+            <input type="number" id="flyAshRatio" value="0" min="0" max="30" step="5">
+        </div>
+
+        <div class="input-group">
+            <label>减水剂减水率 (%)：</label>
+            <input type="number" id="waterReducer" value="0" min="0" max="40" step="5">
+        </div>
+
+        <button onclick="calculateMix()">计算配合比</button>
+
+        <div class="result" id="result">
+            <h3>计算结果 (kg/m³)</h3>
+            <p>水泥：<span id="cement">--</span></p>
+            <p>粉煤灰：<span id="flyash">--</span></p>
+            <p>水：<span id="water">--</span></p>
+            <p>砂：<span id="sand">--</span></p>
+            <p>石子：<span id="gravel">--</span></p>
+            <p>减水剂：<span id="admixture">--</span></p>
+        </div>
+    </div>
+
+    <script>
+        const mixParams = {
+            'C20': { wcRatio: 0.65, water: 185 },
+            'C30': { wcRatio: 0.55, water: 190 },
+            'C40': { wcRatio: 0.45, water: 195 },
+            'C50': { wcRatio: 0.38, water: 200 },
+            'C60': { wcRatio: 0.32, water: 205 },
+            'C70': { wcRatio: 0.28, water: 210 },
+            'C80': { wcRatio: 0.25, water: 215 }
+        };
+
+        function calculateMix() {
+            // 获取所有输入参数
+            const strengthGrade = document.getElementById('strengthGrade').value;
+            const slump = parseFloat(document.getElementById('slump').value);
+            const sandRatio = parseFloat(document.getElementById('sandRatio').value) / 100;
+            const flyAshRatio = parseFloat(document.getElementById('flyAshRatio').value) / 100;
+            const waterReducer = parseFloat(document.getElementById('waterReducer').value) / 100;
+
+            // 获取基本参数
+            const params = mixParams[strengthGrade];
+            
+            // 计算基准用水量（考虑坍落度修正）
+            let baseWater = params.water + Math.max(0, slump - 100) * 0.2;
+            
+            // 应用减水剂效应
+            const actualWater = baseWater * (1 - waterReducer);
+
+            // 计算理论水泥用量
+            const theoreticalCement = actualWater / params.wcRatio;
+            
+            // 应用粉煤灰替代
+            const cement = Math.round(theoreticalCement * (1 - flyAshRatio));
+            const flyash = Math.round(theoreticalCement * flyAshRatio);
+
+            // 计算骨料用量
+            const totalWeight = 2400;
+            const aggregateTotal = totalWeight - (cement + flyash + actualWater);
+            const sand = Math.round(aggregateTotal * sandRatio);
+            const gravel = Math.round(aggregateTotal - sand);
+
+            // 计算减水剂用量（按胶凝材料1.5%估算）
+            const admixture = Math.round((cement + flyash) * 0.015 * 1000) / 1000;
+
+            // 显示结果
+            document.getElementById('cement').textContent = cement;
+            document.getElementById('flyash').textContent = flyash;
+            document.getElementById('water').textContent = Math.round(actualWater);
+            document.getElementById('sand').textContent = sand;
+            document.getElementById('gravel').textContent = gravel;
+            document.getElementById('admixture').textContent = admixture;
+        }
+    </script>
+</body>
+</html>
